@@ -342,7 +342,7 @@ td{padding:0.65rem 0.9rem;font-size:0.8rem;color:var(--dim);vertical-align:middl
 // ============================================================
 //  CONFIGURAÇÃO — cole aqui a URL do seu Google Apps Script
 // ============================================================
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwlhEqK9gZZ3jkqvTiXYq4aD1CL0B0fFhT9RXsR65mYFz1c2dDdSYT_sCLETzhMCleR/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwt_4lf-V9CpCnEd6qzf3UWSg25VqIedsk6SNAfbmGktYc3hSGG5PeKFI98K4uNmWBI/exec';
 // ============================================================
 
 let contacts = [];
@@ -394,7 +394,17 @@ async function loadContacts(){
   try {
     const data = await api({action:'getAll'});
     if(Array.isArray(data)){
-      contacts = data;
+      // Normalizar campos PT -> EN caso a planilha use cabeçalhos em português
+      contacts = data.map(c => ({
+        id:    c.id    || c.ID    || c.Id    || '',
+        name:  c.name  || c.Nome  || c.NOME  || '',
+        role:  c.role  || c.Tipo  || c.TIPO  || c.role || '',
+        phone: c.phone || c.Telefone || c.TELEFONE || '',
+        email: c.email || c.Email || c.EMAIL || '',
+        unit:  c.unit  || c.Unidade || c.UNIDADE || '',
+        temp:  c.temp  || c.Temperatura || c.TEMPERATURA || 'warm',
+        obs:   c.obs   || c.Observação || c.Observacao || c['Observação'] || '',
+      }));
       render();
     }
   } catch(e){
