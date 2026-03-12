@@ -342,7 +342,7 @@ td{padding:0.65rem 0.9rem;font-size:0.8rem;color:var(--dim);vertical-align:middl
 // ============================================================
 //  CONFIGURAÇÃO — cole aqui a URL do seu Google Apps Script
 // ============================================================
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwyh8OZCiJ7USDF-CKMhNUi_OXzO-haQeMP3vHDdRjaeNcQPdzkehW58N9if4Gyq7GQ/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwlhEqK9gZZ3jkqvTiXYq4aD1CL0B0fFhT9RXsR65mYFz1c2dDdSYT_sCLETzhMCleR/exec';
 // ============================================================
 
 let contacts = [];
@@ -362,11 +362,27 @@ function setSyncing(on){
   if(el) el.style.opacity = on ? '1' : '0';
 }
 
-// ---- API GOOGLE SHEETS ----
-async function api(params){
-  const url = SCRIPT_URL + '?' + new URLSearchParams(params);
-  const res = await fetch(url);
-  return res.json();
+// ---- API GOOGLE SHEETS (JSONP para contornar CORS) ----
+function api(params){
+  return new Promise((resolve, reject) => {
+    const cbName = 'cb_' + Date.now();
+    const url = SCRIPT_URL + '?' + new URLSearchParams(params) + '&callback=' + cbName;
+    const script = document.createElement('script');
+    const timer = setTimeout(() => {
+      delete window[cbName];
+      document.body.removeChild(script);
+      reject(new Error('Timeout'));
+    }, 15000);
+    window[cbName] = (data) => {
+      clearTimeout(timer);
+      delete window[cbName];
+      document.body.removeChild(script);
+      resolve(data);
+    };
+    script.src = url;
+    script.onerror = () => { clearTimeout(timer); reject(new Error('Script error')); };
+    document.body.appendChild(script);
+  });
 }
 
 async function loadContacts(){
