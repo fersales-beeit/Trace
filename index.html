@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trace — by Fernando Sales</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0f0f0f; --s1:#171717; --s2:#1e1e1e; --s3:#252525;
+  --b1:#2a2a2a; --b2:#333; --b3:#444;
+  --yellow:#f5c518; --text:#f0ece0; --muted:#777; --dim:#aaa;
+  --hot:#ff5c5c; --hot-bg:rgba(255,92,92,0.12);
+  --warm:#f5a623; --warm-bg:rgba(245,166,35,0.12);
+  --cold:#4ab8ff; --cold-bg:rgba(74,184,255,0.12);
+  --rmo:#b97cff; --rmo-bg:rgba(185,124,255,0.12);
+  --cp:#4af0c8; --cp-bg:rgba(74,240,200,0.12);
+  --r:8px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;}
+
+.hdr{position:sticky;top:0;z-index:100;background:rgba(15,15,15,0.97);backdrop-filter:blur(16px);border-bottom:1px solid var(--b1);height:58px;display:flex;align-items:center;padding:0 1.5rem;gap:1rem;}
+.logo{font-family:'DM Serif Display',serif;font-size:1.15rem;color:var(--yellow);white-space:nowrap;flex-shrink:0;}
+.logo em{color:var(--muted);font-style:normal;font-family:'DM Sans',sans-serif;font-size:0.72rem;font-weight:300;margin-left:0.4rem;}
+.hdr-mid{display:flex;align-items:center;gap:0.5rem;flex:1;justify-content:center;}
+.tabs{display:flex;gap:0.2rem;background:var(--s2);border:1px solid var(--b1);border-radius:7px;padding:3px;}
+.tab{padding:0.26rem 0.9rem;border-radius:5px;border:none;background:transparent;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:0.78rem;font-weight:500;cursor:pointer;transition:all 0.18s;display:flex;align-items:center;gap:0.3rem;}
+.tab.on{background:var(--s1);color:var(--text);border:1px solid var(--b2);}
+.dot{width:6px;height:6px;border-radius:50%;}
+.tab[data-t="rmo"] .dot{background:var(--rmo);}
+.tab[data-t="cp"] .dot{background:var(--cp);}
+.srch{position:relative;}
+.srch input{background:var(--s2);border:1px solid var(--b2);border-radius:6px;padding:0.32rem 0.65rem 0.32rem 1.75rem;color:var(--text);font-family:'DM Sans',sans-serif;font-size:0.78rem;width:165px;transition:all 0.18s;}
+.srch input:focus{outline:none;border-color:var(--yellow);width:205px;}
+.srch input::placeholder{color:var(--muted);}
+.srch-ic{position:absolute;left:0.55rem;top:50%;transform:translateY(-50%);color:var(--muted);font-size:0.7rem;pointer-events:none;}
+.hdr-r{display:flex;align-items:center;gap:0.45rem;flex-shrink:0;}
+.stats{display:flex;gap:0.5rem;font-family:'DM Mono',monospace;font-size:0.68rem;margin-right:0.25rem;}
+.st{display:flex;align-items:center;gap:0.22rem;color:var(--muted);}
+.st-dot{width:5px;height:5px;border-radius:50%;}
+.btn{display:inline-flex;align-items:center;gap:0.3rem;padding:0.3rem 0.8rem;border-radius:6px;font-family:'DM Sans',sans-serif;font-size:0.76rem;font-weight:600;cursor:pointer;transition:all 0.18s;white-space:nowrap;border:1px solid transparent;}
+.btn:hover{transform:translateY(-1px);}
+.btn-y{background:var(--yellow);color:#0f0f0f;}
+.btn-y:hover{background:#ffd440;}
+.btn-o{background:transparent;color:var(--dim);border-color:var(--b2);}
+.btn-o:hover{background:var(--s2);color:var(--text);}
+
+/* MAIN LAYOUT */
+.main{display:flex;height:calc(100vh - 58px);}
+
+/* LEFT PANEL — temp filter */
+.sidebar{width:180px;flex-shrink:0;border-right:1px solid var(--b1);padding:1rem 0;display:flex;flex-direction:column;gap:0.25rem;}
+.sf-btn{display:flex;align-items:center;gap:0.6rem;padding:0.55rem 1.1rem;border:none;background:transparent;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:0.82rem;font-weight:500;cursor:pointer;transition:all 0.15s;text-align:left;width:100%;}
+.sf-btn:hover{background:var(--s2);color:var(--dim);}
+.sf-btn.on{background:var(--s2);color:var(--text);font-weight:600;}
+.sf-btn.on.f-all{border-left:3px solid var(--b3);}
+.sf-btn.on.f-hot{border-left:3px solid var(--hot);color:var(--hot);}
+.sf-btn.on.f-warm{border-left:3px solid var(--warm);color:var(--warm);}
+.sf-btn.on.f-cold{border-left:3px solid var(--cold);color:var(--cold);}
+.sf-count{margin-left:auto;font-family:'DM Mono',monospace;font-size:0.65rem;background:var(--s3);padding:1px 6px;border-radius:10px;color:var(--muted);}
+
+/* RIGHT PANEL */
+.content{flex:1;overflow:auto;}
+
+/* TABLE */
+.wrap{background:var(--s1);}
+table{width:100%;border-collapse:collapse;}
+thead tr{background:var(--s2);border-bottom:1px solid var(--b2);position:sticky;top:0;z-index:10;}
+th{padding:0.6rem 0.9rem;text-align:left;font-size:0.62rem;font-weight:600;letter-spacing:0.09em;text-transform:uppercase;color:var(--muted);white-space:nowrap;}
+tbody tr{border-bottom:1px solid var(--b1);transition:background 0.12s;animation:ri 0.2s ease;}
+@keyframes ri{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
+tbody tr:last-child{border-bottom:none;}
+tbody tr:hover{background:var(--s2);}
+td{padding:0.65rem 0.9rem;font-size:0.8rem;color:var(--dim);vertical-align:middle;}
+.td-name{font-weight:600;color:var(--text);font-size:0.85rem;white-space:nowrap;}
+.badge{display:inline-block;font-size:0.58rem;font-weight:700;padding:1px 5px;border-radius:20px;letter-spacing:0.05em;text-transform:uppercase;margin-left:0.3rem;vertical-align:middle;}
+.badge-rmo{background:var(--rmo-bg);color:var(--rmo);}
+.badge-cp{background:var(--cp-bg);color:var(--cp);}
+.td-sm{font-size:0.74rem;}
+.td-sm a{color:var(--dim);text-decoration:none;}
+.phone-link{color:var(--yellow);cursor:pointer;font-size:0.74rem;border-bottom:1px dashed rgba(245,197,24,0.4);transition:all 0.15s;}
+.phone-link:hover{color:#ffd440;border-bottom-color:var(--yellow);}
+.td-sm a:hover{color:var(--yellow);}
+.td-unit{font-size:0.74rem;color:var(--muted);white-space:nowrap;}
+
+/* TEMP BUTTONS */
+.temp-sel{display:flex;gap:0.25rem;}
+.tb{width:28px;height:28px;border-radius:5px;border:1px solid var(--b2);background:transparent;font-size:0.85rem;cursor:pointer;transition:all 0.15s;display:flex;align-items:center;justify-content:center;opacity:0.28;}
+.tb:hover{opacity:0.7;transform:scale(1.1);}
+.tb.on{opacity:1;border-color:transparent;}
+.tb.on.hot{background:var(--hot-bg);border-color:var(--hot);}
+.tb.on.warm{background:var(--warm-bg);border-color:var(--warm);}
+.tb.on.cold{background:var(--cold-bg);border-color:var(--cold);}
+
+/* OBS */
+.obs-txt{font-size:0.71rem;color:var(--muted);font-style:italic;cursor:pointer;padding:3px 5px;border-radius:4px;border:1px solid transparent;transition:all 0.13s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px;display:block;}
+.obs-txt:hover{border-color:var(--b2);background:var(--s2);color:var(--dim);}
+.obs-inp{background:var(--s2);border:1px solid var(--yellow);border-radius:4px;padding:3px 6px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:0.71rem;width:100%;min-width:150px;}
+.obs-inp:focus{outline:none;}
+
+/* ACTIONS */
+.td-act{white-space:nowrap;min-width:70px;}
+.ic-btn{width:28px;height:28px;border-radius:5px;border:1px solid var(--b2);background:var(--s2);color:var(--dim);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:0.8rem;transition:all 0.13s;margin-left:0.2rem;}
+.ic-btn:hover{background:var(--b2);color:var(--text);}
+.ic-btn.del:hover{background:var(--hot-bg);color:var(--hot);border-color:var(--hot);}
+.ic-btn.msg-hot{border-color:var(--hot);color:var(--hot);}
+.ic-btn.msg-hot:hover{background:var(--hot-bg);}
+.ic-btn.msg-warm{border-color:var(--warm);color:var(--warm);}
+.ic-btn.msg-warm:hover{background:var(--warm-bg);}
+.ic-btn.msg-cold{border-color:var(--cold);color:var(--cold);}
+.ic-btn.msg-cold:hover{background:var(--cold-bg);}
+
+.empty td{text-align:center;padding:4rem;color:var(--muted);font-size:0.82rem;}
+.empty-ic{font-size:1.8rem;display:block;margin-bottom:0.4rem;opacity:0.25;}
+
+/* MODALS */
+.ov{position:fixed;inset:0;background:rgba(0,0,0,0.78);backdrop-filter:blur(8px);z-index:200;display:flex;align-items:center;justify-content:center;padding:1rem;opacity:0;pointer-events:none;transition:opacity 0.18s;}
+.ov.on{opacity:1;pointer-events:all;}
+.modal{background:var(--s1);border:1px solid var(--b2);border-radius:12px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;transform:translateY(14px);transition:transform 0.18s;box-shadow:0 20px 70px rgba(0,0,0,0.65);}
+.ov.on .modal{transform:translateY(0);}
+.m-hdr{padding:1rem 1.3rem 0.85rem;border-bottom:1px solid var(--b1);display:flex;align-items:center;justify-content:space-between;}
+.m-title{font-family:'DM Serif Display',serif;font-size:1.05rem;}
+.m-close{width:25px;height:25px;border-radius:5px;border:1px solid var(--b2);background:transparent;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:0.85rem;transition:all 0.13s;}
+.m-close:hover{background:var(--s2);color:var(--text);}
+.m-body{padding:1rem 1.3rem;display:flex;flex-direction:column;gap:0.75rem;}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;}
+.row1{grid-template-columns:1fr;}
+.fg{display:flex;flex-direction:column;gap:0.25rem;}
+.lbl{font-size:0.62rem;font-weight:600;color:var(--muted);letter-spacing:0.07em;text-transform:uppercase;}
+.fi,.fs,.fta{background:var(--s2);border:1px solid var(--b2);border-radius:6px;padding:0.44rem 0.62rem;color:var(--text);font-family:'DM Sans',sans-serif;font-size:0.8rem;transition:border-color 0.13s;width:100%;}
+.fi:focus,.fs:focus,.fta:focus{outline:none;border-color:var(--yellow);}
+.fs option{background:#1e1e1e;}
+.fta{resize:vertical;min-height:58px;}
+.m-ftr{padding:0.85rem 1.3rem;border-top:1px solid var(--b1);display:flex;gap:0.45rem;justify-content:flex-end;}
+
+/* MSG POPUP */
+.msg-modal{max-width:520px;}
+.msg-info{display:flex;align-items:center;gap:0.6rem;padding:0.7rem 0;border-bottom:1px solid var(--b1);margin-bottom:0.75rem;}
+.msg-name{font-weight:600;font-size:0.95rem;}
+.msg-sub{font-size:0.72rem;color:var(--muted);margin-top:0.1rem;}
+.msg-box{position:relative;}
+.msg-textarea{background:var(--s2);border:1px solid var(--b2);border-radius:8px;padding:0.85rem;color:var(--text);font-family:'DM Sans',sans-serif;font-size:0.83rem;line-height:1.75;width:100%;min-height:130px;resize:vertical;transition:border-color 0.13s;}
+.msg-textarea:focus{outline:none;border-color:var(--yellow);}
+.msg-actions{display:flex;gap:0.5rem;margin-top:0.6rem;align-items:center;}
+.msg-hint{font-size:0.68rem;color:var(--muted);margin-left:auto;}
+
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px;}
+
+/* LOGIN */
+.login-ov{position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;align-items:center;justify-content:center;}
+.login-box{background:var(--s1);border:1px solid var(--b2);border-radius:16px;padding:2.5rem 2rem;width:100%;max-width:360px;display:flex;flex-direction:column;align-items:center;gap:1.2rem;box-shadow:0 24px 80px rgba(0,0,0,0.6);}
+.login-logo{font-family:'DM Serif Display',serif;font-size:2rem;color:var(--yellow);}
+.login-logo em{display:block;color:var(--muted);font-style:normal;font-family:'DM Sans',sans-serif;font-size:0.72rem;font-weight:300;text-align:center;margin-top:0.1rem;letter-spacing:0.08em;}
+.login-sub{font-size:0.78rem;color:var(--muted);text-align:center;margin-top:-0.4rem;}
+.login-field{width:100%;display:flex;flex-direction:column;gap:0.3rem;}
+.login-field input{background:var(--s2);border:1px solid var(--b2);border-radius:8px;padding:0.65rem 0.85rem;color:var(--text);font-family:'DM Sans',sans-serif;font-size:0.9rem;width:100%;transition:border-color 0.15s;letter-spacing:0.1em;}
+.login-field input:focus{outline:none;border-color:var(--yellow);}
+.login-btn{width:100%;padding:0.65rem;background:var(--yellow);color:#0f0f0f;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:0.88rem;font-weight:700;cursor:pointer;transition:background 0.15s;}
+.login-btn:hover{background:#ffd440;}
+.login-err{font-size:0.72rem;color:var(--hot);text-align:center;min-height:1rem;}
+
+
+/* ADMIN */
+.admin-ov{position:fixed;inset:0;background:rgba(0,0,0,0.82);backdrop-filter:blur(10px);z-index:300;display:flex;align-items:center;justify-content:center;padding:1rem;opacity:0;pointer-events:none;transition:opacity 0.18s;}
+.admin-ov.on{opacity:1;pointer-events:all;}
+.admin-modal{background:var(--s1);border:1px solid var(--b2);border-radius:14px;width:100%;max-width:580px;max-height:92vh;overflow-y:auto;transform:translateY(14px);transition:transform 0.18s;box-shadow:0 24px 80px rgba(0,0,0,0.7);}
+.admin-ov.on .admin-modal{transform:translateY(0);}
+.admin-hdr{padding:1.1rem 1.4rem 0.9rem;border-bottom:1px solid var(--b1);display:flex;align-items:center;justify-content:space-between;}
+.admin-title{font-family:'DM Serif Display',serif;font-size:1.1rem;display:flex;align-items:center;gap:0.5rem;}
+.admin-sections{padding:1.2rem 1.4rem;display:flex;flex-direction:column;gap:1.4rem;}
+.admin-section{display:flex;flex-direction:column;gap:0.7rem;}
+.admin-section-title{font-size:0.62rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);padding-bottom:0.4rem;border-bottom:1px solid var(--b1);}
+.admin-row{display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;}
+.stat-card{background:var(--s2);border:1px solid var(--b1);border-radius:8px;padding:0.85rem 1rem;display:flex;flex-direction:column;gap:0.2rem;}
+.stat-card-val{font-family:'DM Mono',monospace;font-size:1.5rem;font-weight:500;color:var(--text);}
+.stat-card-lbl{font-size:0.68rem;color:var(--muted);}
+.stat-card.hot .stat-card-val{color:var(--hot);}
+.stat-card.warm .stat-card-val{color:var(--warm);}
+.stat-card.cold .stat-card-val{color:var(--cold);}
+.admin-inp-row{display:flex;gap:0.5rem;align-items:flex-end;}
+.admin-inp-row .fg{flex:1;}
+.admin-feedback{font-size:0.72rem;min-height:1rem;margin-top:0.1rem;}
+.admin-feedback.ok{color:var(--cp);}
+.admin-feedback.err{color:var(--hot);}
+.sync-status{font-size:0.72rem;color:var(--muted);font-family:'DM Mono',monospace;}
+
+</style>
+</head>
+<body>
+
+
+<div class="login-ov" id="login-ov">
+  <div class="login-box">
+    <div class="login-logo">Trace <em>by Fernando Sales</em></div>
+    <p class="login-sub">Gestão de relacionamentos</p>
+    <div class="login-field">
+      <input type="password" id="login-inp" placeholder="Senha de acesso" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="login-btn" onclick="doLogin()">Entrar</button>
+    <div class="login-err" id="login-err"></div>
+  </div>
+</div>
+
+<div class="hdr">
+  <div class="logo">Trace <em>by Fernando Sales</em></div>
+  <div class="hdr-mid">
+    <div class="tabs">
+      <button class="tab on" data-t="rmo" onclick="switchTab('rmo')"><span class="dot"></span>RMO</button>
+      <button class="tab" data-t="cp" onclick="switchTab('cp')"><span class="dot"></span>CP</button>
+    </div>
+    <div class="srch">
+      <span class="srch-ic">🔍</span>
+      <input id="srch" placeholder="Buscar..." oninput="render()">
+    </div>
+  </div>
+  <div class="hdr-r">
+    <div id="sync-indicator" style="width:8px;height:8px;border-radius:50%;background:var(--yellow);opacity:0;transition:opacity 0.2s;margin-right:0.2rem;" title="Sincronizando..."></div><div class="stats" id="stats"></div>
+    <button class="btn btn-o" onclick="exportData()" title="Baixar backup em JSON">💾 Backup</button>
+
+    <button class="btn btn-o" onclick="openAdmin()" title="Administração">⚙️</button>
+    <button class="btn btn-y" onclick="openModal()">+ Novo</button>
+  </div>
+</div>
+
+<div class="main">
+  <div class="sidebar">
+    <button class="sf-btn f-all on" onclick="setFilter('all')">
+      <span>Todos</span><span class="sf-count" id="cnt-all">0</span>
+    </button>
+    <button class="sf-btn f-hot" onclick="setFilter('hot')">
+      <span>🔥 Quente</span><span class="sf-count" id="cnt-hot">0</span>
+    </button>
+    <button class="sf-btn f-warm" onclick="setFilter('warm')">
+      <span>🌡️ Morno</span><span class="sf-count" id="cnt-warm">0</span>
+    </button>
+    <button class="sf-btn f-cold" onclick="setFilter('cold')">
+      <span>🧊 Frio</span><span class="sf-count" id="cnt-cold">0</span>
+    </button>
+  </div>
+
+  <div class="content">
+    <div class="wrap">
+      <table>
+        <thead><tr>
+          <th>Nome</th>
+          <th>Telefone</th>
+          <th>E-mail</th>
+          <th>Unidade</th>
+          <th>Observações</th>
+          <th>Temperatura</th>
+          <th>Ações</th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- CONTACT MODAL -->
+<div class="ov" id="ov" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="m-hdr"><div class="m-title" id="m-title">Novo Contato</div><button class="m-close" onclick="closeModal()">✕</button></div>
+    <div class="m-body">
+      <div class="row2">
+        <div class="fg"><label class="lbl">Nome *</label><input id="f-name" class="fi" placeholder="Ex: João Silva"></div>
+        <div class="fg"><label class="lbl">Cargo</label>
+          <select id="f-role" class="fs"><option value="RMO">RMO</option><option value="CP">CP</option></select>
+        </div>
+      </div>
+      <div class="row2">
+        <div class="fg"><label class="lbl">Telefone</label><input id="f-phone" class="fi" placeholder="(11) 99999-0000"></div>
+        <div class="fg"><label class="lbl">E-mail</label><input id="f-email" type="email" class="fi" placeholder="nome@totvs.com.br"></div>
+      </div>
+      <div class="row2">
+        <div class="fg"><label class="lbl">Unidade TOTVS</label>
+          <select id="f-unit" class="fs">
+            <option value="">Selecionar...</option>
+            <option>TOTVS Matriz</option>
+            <option>TOTVS Interior Paulista</option>
+            <option>TOTVS Curitiba</option>
+            <option>TOTVS Rio de Janeiro</option>
+            <option>TOTVS Belo Horizonte</option>
+            <option>TOTVS Norte</option>
+            <option>TOTVS Nordeste</option>
+          </select>
+        </div>
+        <div class="fg"><label class="lbl">Temperatura</label>
+          <select id="f-temp" class="fs">
+            <option value="hot">🔥 Quente</option>
+            <option value="warm" selected>🌡️ Morno</option>
+            <option value="cold">🧊 Frio</option>
+          </select>
+        </div>
+      </div>
+      <div class="row2 row1">
+        <div class="fg"><label class="lbl">Observações</label>
+          <textarea id="f-obs" class="fta" placeholder="Prefere WhatsApp, responde rápido..."></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="m-ftr">
+      <button class="btn btn-o" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-y" onclick="saveContact()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MESSAGE POPUP -->
+<div class="ov" id="ov-msg" onclick="if(event.target===this)closeMsg()">
+  <div class="modal msg-modal">
+    <div class="m-hdr">
+      <div class="m-title" id="msg-header">Mensagem</div>
+      <button class="m-close" onclick="closeMsg()">✕</button>
+    </div>
+    <div class="m-body">
+      <div class="msg-info">
+        <div>
+          <div class="msg-name" id="msg-name"></div>
+          <div class="msg-sub" id="msg-sub"></div>
+        </div>
+      </div>
+      <div class="fg"><label class="lbl">Mensagem</label>
+        <textarea class="msg-textarea" id="msg-txt" rows="5"></textarea>
+      </div>
+      <div class="msg-actions">
+        <button class="btn btn-o" onclick="regenMsg()">🔄 Gerar outra</button>
+        <span class="msg-hint">Edite à vontade antes de copiar</span>
+      </div>
+    </div>
+    <div class="m-ftr">
+      <button class="btn btn-o" onclick="closeMsg()">Fechar</button>
+      <button class="btn btn-o" id="msg-wa-btn" onclick="openWhatsApp()" style="color:var(--cp);border-color:var(--cp)">💬 Abrir WhatsApp</button>
+      <button class="btn btn-y" id="msg-send-btn" onclick="sendAutoMsg()">📤 Enviar mensagem automática</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+//  CONFIGURAÇÃO — cole aqui a URL do seu Google Apps Script
+// ============================================================
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwyh8OZCiJ7USDF-CKMhNUi_OXzO-haQeMP3vHDdRjaeNcQPdzkehW58N9if4Gyq7GQ/exec';
+// ============================================================
+
+let contacts = [];
+let tab = 'rmo';
+let filter = 'all';
+let editId = null;
+let editObsId = null;
+let currentMsgContact = null;
+let syncing = false;
+
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2); }
+
+// ---- INDICADOR DE SYNC ----
+function setSyncing(on){
+  syncing = on;
+  const el = document.getElementById('sync-indicator');
+  if(el) el.style.opacity = on ? '1' : '0';
+}
+
+// ---- API GOOGLE SHEETS ----
+async function api(params){
+  const url = SCRIPT_URL + '?' + new URLSearchParams(params);
+  const res = await fetch(url);
+  return res.json();
+}
+
+async function loadContacts(){
+  if(!SCRIPT_URL || SCRIPT_URL === 'COLE_AQUI_SUA_URL'){
+    document.getElementById('tbody').innerHTML = '<tr class="empty"><td colspan="7"><span class="empty-ic">⚠️</span>Configure a URL do Google Apps Script no topo do código.</td></tr>';
+    return;
+  }
+  setSyncing(true);
+  try {
+    const data = await api({action:'getAll'});
+    if(Array.isArray(data)){
+      contacts = data;
+      render();
+    }
+  } catch(e){
+    alert('Erro ao carregar contatos. Verifique a URL do script.');
+  }
+  setSyncing(false);
+}
+
+async function syncSave(contact){
+  setSyncing(true);
+  try { await api({action:'save', ...contact}); } catch(e){}
+  setSyncing(false);
+}
+
+async function syncDelete(id){
+  setSyncing(true);
+  try { await api({action:'delete', id}); } catch(e){}
+  setSyncing(false);
+}
+
+async function syncField(id, field, value){
+  setSyncing(true);
+  try { await api({action:'update', id, field, value}); } catch(e){}
+  setSyncing(false);
+}
+
+// ---- EXPORT (backup) ----
+function exportData(){
+  const blob = new Blob([JSON.stringify(contacts,null,2)],{type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'beeit_backup_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+}
+
+function switchTab(t){
+  tab=t;
+  document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+  render();
+}
+
+function setFilter(f){
+  filter=f;
+  document.querySelectorAll('.sf-btn').forEach(b=>b.classList.remove('on'));
+  document.querySelector('.f-'+f).classList.add('on');
+  render();
+}
+
+function render(){
+  const q = document.getElementById('srch').value.toLowerCase();
+  const tabContacts = contacts.filter(c=>c.role.toLowerCase()===tab);
+
+  document.getElementById('cnt-all').textContent = tabContacts.length;
+  document.getElementById('cnt-hot').textContent = tabContacts.filter(c=>c.temp==='hot').length;
+  document.getElementById('cnt-warm').textContent = tabContacts.filter(c=>c.temp==='warm').length;
+  document.getElementById('cnt-cold').textContent = tabContacts.filter(c=>c.temp==='cold').length;
+
+  const list = tabContacts.filter(c=>{
+    if(filter!=='all' && c.temp!==filter) return false;
+    if(!q) return true;
+    return (c.name||'').toLowerCase().includes(q)
+      ||(c.phone||'').includes(q)
+      ||(c.email||'').toLowerCase().includes(q)
+      ||(c.unit||'').toLowerCase().includes(q);
+  });
+
+  const tbody = document.getElementById('tbody');
+  tbody.innerHTML = list.length===0
+    ? `<tr class="empty"><td colspan="7"><span class="empty-ic">○</span>Nenhum contato encontrado.</td></tr>`
+    : list.map(c=>rowHTML(c)).join('');
+
+  const all = contacts;
+  document.getElementById('stats').innerHTML = `
+    <div class="st"><span class="st-dot" style="background:var(--hot)"></span>${all.filter(x=>x.temp==='hot').length}</div>
+    <div class="st"><span class="st-dot" style="background:var(--warm)"></span>${all.filter(x=>x.temp==='warm').length}</div>
+    <div class="st"><span class="st-dot" style="background:var(--cold)"></span>${all.filter(x=>x.temp==='cold').length}</div>
+    <div class="st" style="color:var(--muted)">/ ${all.length}</div>`;
+}
+
+function rowHTML(c){
+  const badge = `<span class="badge ${c.role==='RMO'?'badge-rmo':'badge-cp'}">${c.role}</span>`;
+  const t = c.temp||'warm';
+  const tempSel = `<div class="temp-sel">
+    <button class="tb hot ${t==='hot'?'on':''}" onclick="setTemp('${c.id}','hot')" title="Quente">🔥</button>
+    <button class="tb warm ${t==='warm'?'on':''}" onclick="setTemp('${c.id}','warm')" title="Morno">🌡️</button>
+    <button class="tb cold ${t==='cold'?'on':''}" onclick="setTemp('${c.id}','cold')" title="Frio">🧊</button>
+  </div>`;
+  const obsCell = editObsId===c.id
+    ? `<input class="obs-inp" id="oi-${c.id}" value="${(c.obs||'').replace(/"/g,'&quot;')}" onblur="saveObs('${c.id}')" onkeydown="obsKey(event,'${c.id}')" autofocus>`
+    : `<span class="obs-txt" onclick="startObs('${c.id}')">${c.obs||'+ Nota'}</span>`;
+  const phoneCell = c.phone
+    ? `<span class="phone-link" onclick="openMsg('${c.id}')" title="Clique para enviar mensagem">${c.phone}</span>`
+    : '<span style="opacity:0.25">—</span>';
+  return `<tr>
+    <td class="td-name">${c.name}${badge}</td>
+    <td class="td-sm">${phoneCell}</td>
+    <td class="td-sm">${c.email?`<a href="mailto:${c.email}">${c.email}</a>`:'<span style="opacity:0.25">—</span>'}</td>
+    <td class="td-unit">${c.unit||'<span style="opacity:0.25">—</span>'}</td>
+    <td>${obsCell}</td>
+    <td>${tempSel}</td>
+    <td class="td-act">
+      <button class="ic-btn" onclick="openModal('${c.id}')" title="Editar">✏️</button>
+      <button class="ic-btn del" onclick="del('${c.id}')" title="Excluir">🗑️</button>
+    </td>
+  </tr>`;
+}
+
+function setTemp(id,temp){
+  contacts=contacts.map(c=>c.id===id?{...c,temp}:c);
+  render();
+  syncField(id,'temp',temp);
+}
+
+function startObs(id){ editObsId=id; render(); setTimeout(()=>{const el=document.getElementById('oi-'+id);if(el){el.focus();el.select();}},10); }
+function saveObs(id){
+  const el=document.getElementById('oi-'+id);
+  if(el){
+    const val = el.value.trim();
+    contacts=contacts.map(c=>c.id===id?{...c,obs:val}:c);
+    syncField(id,'obs',val);
+  }
+  editObsId=null; render();
+}
+function obsKey(e,id){ if(e.key==='Enter')saveObs(id); if(e.key==='Escape'){editObsId=null;render();} }
+
+// MESSAGE POPUP
+function openMsg(id){
+  const c = contacts.find(x=>x.id===id);
+  if(!c) return;
+  currentMsgContact = c;
+  const t = c.temp||'warm';
+  const label = t==='hot'?'🔥 Quente':t==='warm'?'🌡️ Morno':'🧊 Frio';
+  document.getElementById('msg-header').textContent = `${label} — Mensagem`;
+  document.getElementById('msg-name').textContent = c.name;
+  document.getElementById('msg-sub').textContent = [c.role, c.unit].filter(Boolean).join(' · ');
+  document.getElementById('msg-txt').value = generateMsg(c);
+  const waBtn = document.getElementById('msg-wa-btn');
+  if(c.phone){ waBtn.style.display='inline-flex'; } else { waBtn.style.display='none'; }
+  document.getElementById('ov-msg').classList.add('on');
+}
+
+function regenMsg(){
+  if(!currentMsgContact) return;
+  document.getElementById('msg-txt').value = generateMsg(currentMsgContact);
+}
+
+function sendAutoMsg(){
+  const c = currentMsgContact;
+  if(!c||!c.phone) return;
+  const phone = c.phone.replace(/\D/g,'');
+  const msg = encodeURIComponent(document.getElementById('msg-txt').value);
+  window.open(`https://wa.me/55${phone}?text=${msg}`,'_blank');
+  const btn = document.getElementById('msg-send-btn');
+  btn.textContent = '✓ Mensagem enviada!';
+  btn.style.background = 'rgba(74,240,200,0.15)';
+  btn.style.color = 'var(--cp)';
+  setTimeout(()=>{
+    btn.textContent = '📤 Enviar mensagem automática';
+    btn.style.background = '';
+    btn.style.color = '';
+  }, 2500);
+}
+
+function openWhatsApp(){
+  const c = currentMsgContact;
+  if(!c||!c.phone) return;
+  const phone = c.phone.replace(/\D/g,'');
+  window.open(`https://wa.me/55${phone}`,'_blank');
+}
+
+function closeMsg(){ document.getElementById('ov-msg').classList.remove('on'); currentMsgContact=null; }
+
+function generateMsg(c){
+  const n = c.name.split(' ')[0];
+  const r = c.role==='RMO';
+  const msgs = {
+    hot: `Oi ${n}, tudo bem? Passando para avisar que tô com bons analistas e desenvolvedores disponíveis essa semana. Se aparecer alguma coisa é só me falar!`,
+    warm: `Oi ${n}, tudo certo? Passando para não perder o contato. Se tiver alguma demanda chegando ou em andamento que precise de apoio, é só me avisar.`,
+    cold: `Oi ${n}, tudo bem? Tô com bons analistas e desenvolvedores disponíveis agora. Se surgir alguma necessidade pode me chamar!`
+  };
+  return msgs[c.temp||'warm'];
+}
+
+function openModal(eid=null){
+  editId=eid;
+  document.getElementById('m-title').textContent = eid?'Editar Contato':'Novo Contato';
+  const c = eid?contacts.find(x=>x.id===eid):null;
+  document.getElementById('f-name').value=c?.name||'';
+  document.getElementById('f-role').value=c?.role||(tab==='rmo'?'RMO':'CP');
+  document.getElementById('f-phone').value=c?.phone||'';
+  document.getElementById('f-email').value=c?.email||'';
+  document.getElementById('f-unit').value=c?.unit||'';
+  document.getElementById('f-temp').value=c?.temp||'warm';
+  document.getElementById('f-obs').value=c?.obs||'';
+  document.getElementById('ov').classList.add('on');
+  setTimeout(()=>document.getElementById('f-name').focus(),80);
+}
+function closeModal(){ document.getElementById('ov').classList.remove('on'); editId=null; }
+
+async function saveContact(){
+  const name=document.getElementById('f-name').value.trim();
+  if(!name){document.getElementById('f-name').focus();return;}
+  const data={id:editId||uid(),name,role:document.getElementById('f-role').value,phone:document.getElementById('f-phone').value.trim(),email:document.getElementById('f-email').value.trim(),unit:document.getElementById('f-unit').value,temp:document.getElementById('f-temp').value,obs:document.getElementById('f-obs').value.trim()};
+  contacts=editId?contacts.map(c=>c.id===editId?data:c):[...contacts,data];
+  closeModal(); render();
+  await syncSave(data);
+}
+
+async function del(id){
+  if(!confirm('Remover este contato?')) return;
+  contacts=contacts.filter(c=>c.id!==id); render();
+  await syncDelete(id);
+}
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){closeModal();closeMsg();}
+  if(e.key==='n'&&!document.getElementById('ov').classList.contains('on'))openModal();
+});
+
+
+// ---- LOGIN ----
+const PASS_HASH = '32cc95cf52755291c4d1d5289775e19924634a6e8127ef9e1c29fb2b69711bc0';
+const ADMIN_HASH = '66e84049a6c7f26c5033b8cb39b446de18d8c388961e07216ac5a9aedd9ac2bd';
+
+async function hashStr(str){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+async function doLogin(){
+  const val = document.getElementById('login-inp').value;
+  const h = await hashStr(val);
+  if(h === PASS_HASH){
+    sessionStorage.setItem('beeIT_auth','1');
+    document.getElementById('login-ov').style.display='none';
+    loadContacts();
+  } else {
+    document.getElementById('login-err').textContent = 'Senha incorreta. Tente novamente.';
+    document.getElementById('login-inp').value='';
+    document.getElementById('login-inp').focus();
+    setTimeout(()=>document.getElementById('login-err').textContent='', 2500);
+  }
+}
+
+function checkAuth(){
+  if(sessionStorage.getItem('beeIT_auth')==='1'){
+    document.getElementById('login-ov').style.display='none';
+    loadContacts();
+  } else {
+    setTimeout(()=>document.getElementById('login-inp').focus(), 100);
+  }
+}
+
+checkAuth();
+
+// ---- ADMIN ----
+let adminUnlocked = false;
+let currentMainHash = PASS_HASH;
+let currentAdminHash = ADMIN_HASH;
+
+function openAdmin(){
+  if(adminUnlocked){
+    showAdminModal();
+  } else {
+    document.getElementById('admin-login-ov').style.display='flex';
+    setTimeout(()=>document.getElementById('admin-login-inp').focus(),80);
+  }
+}
+
+function closeAdminLogin(){
+  document.getElementById('admin-login-ov').style.display='none';
+  document.getElementById('admin-login-inp').value='';
+  document.getElementById('admin-login-err').textContent='';
+}
+
+async function doAdminLogin(){
+  const val = document.getElementById('admin-login-inp').value;
+  const h = await hashStr(val);
+  if(h === currentAdminHash){
+    adminUnlocked = true;
+    closeAdminLogin();
+    showAdminModal();
+  } else {
+    document.getElementById('admin-login-err').textContent = 'Senha incorreta.';
+    document.getElementById('admin-login-inp').value='';
+    document.getElementById('admin-login-inp').focus();
+    setTimeout(()=>document.getElementById('admin-login-err').textContent='', 2000);
+  }
+}
+
+function showAdminModal(){
+  // Preencher stats
+  document.getElementById('stat-total').textContent = contacts.length;
+  document.getElementById('stat-rmo').textContent = contacts.filter(c=>c.role==='RMO').length;
+  document.getElementById('stat-hot').textContent = contacts.filter(c=>c.temp==='hot').length;
+  document.getElementById('stat-warm').textContent = contacts.filter(c=>c.temp==='warm').length;
+  document.getElementById('stat-cold').textContent = contacts.filter(c=>c.temp==='cold').length;
+  // Preencher URL atual
+  document.getElementById('admin-url').value = SCRIPT_URL !== 'COLE_AQUI_SUA_URL' ? SCRIPT_URL : '';
+  document.getElementById('admin-ov').classList.add('on');
+}
+
+function closeAdmin(){
+  document.getElementById('admin-ov').classList.remove('on');
+}
+
+async function adminSync(){
+  const btn = event.target;
+  btn.textContent = '⏳ Sincronizando...';
+  btn.disabled = true;
+  const before = contacts.length;
+  await loadContacts();
+  const after = contacts.length;
+  document.getElementById('sync-status').textContent = `✓ ${after} contatos — ${new Date().toLocaleTimeString('pt-BR')}`;
+  // Atualizar stats
+  document.getElementById('stat-total').textContent = contacts.length;
+  document.getElementById('stat-rmo').textContent = contacts.filter(c=>c.role==='RMO').length;
+  document.getElementById('stat-hot').textContent = contacts.filter(c=>c.temp==='hot').length;
+  document.getElementById('stat-warm').textContent = contacts.filter(c=>c.temp==='warm').length;
+  document.getElementById('stat-cold').textContent = contacts.filter(c=>c.temp==='cold').length;
+  btn.textContent = '✓ Sincronizado!';
+  setTimeout(()=>{ btn.textContent='🔄 Forçar sincronização'; btn.disabled=false; }, 2000);
+}
+
+function saveScriptUrl(){
+  const val = document.getElementById('admin-url').value.trim();
+  if(!val || !val.startsWith('https://script.google.com')){
+    setFeedback('url-feedback','URL inválida. Deve começar com https://script.google.com','err');
+    return;
+  }
+  // Atualizar em runtime (sessão atual)
+  window.SCRIPT_URL_OVERRIDE = val;
+  // Guardar no sessionStorage para reload
+  sessionStorage.setItem('trace_script_url', val);
+  setFeedback('url-feedback','✓ URL salva! Recarregue a página para aplicar.','ok');
+}
+
+async function changeMainPass(){
+  const p1 = document.getElementById('new-pass').value;
+  const p2 = document.getElementById('new-pass2').value;
+  if(!p1){ setFeedback('pass-feedback','Digite uma senha.','err'); return; }
+  if(p1 !== p2){ setFeedback('pass-feedback','As senhas não coincidem.','err'); return; }
+  if(p1.length < 6){ setFeedback('pass-feedback','Mínimo 6 caracteres.','err'); return; }
+  const h = await hashStr(p1);
+  currentMainHash = h;
+  sessionStorage.setItem('trace_main_hash', h);
+  document.getElementById('new-pass').value='';
+  document.getElementById('new-pass2').value='';
+  setFeedback('pass-feedback','✓ Senha principal alterada para esta sessão!','ok');
+}
+
+async function changeAdminPass(){
+  const p1 = document.getElementById('new-admin-pass').value;
+  const p2 = document.getElementById('new-admin-pass2').value;
+  if(!p1){ setFeedback('admin-pass-feedback','Digite uma senha.','err'); return; }
+  if(p1 !== p2){ setFeedback('admin-pass-feedback','As senhas não coincidem.','err'); return; }
+  if(p1.length < 6){ setFeedback('admin-pass-feedback','Mínimo 6 caracteres.','err'); return; }
+  const h = await hashStr(p1);
+  currentAdminHash = h;
+  sessionStorage.setItem('trace_admin_hash', h);
+  document.getElementById('new-admin-pass').value='';
+  document.getElementById('new-admin-pass2').value='';
+  setFeedback('admin-pass-feedback','✓ Senha admin alterada para esta sessão!','ok');
+}
+
+function setFeedback(id, msg, type){
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.className = 'admin-feedback ' + type;
+  setTimeout(()=>{ el.textContent=''; el.className='admin-feedback'; }, 3500);
+}
+
+// Fechar admin com ESC
+document.addEventListener('keydown', e=>{
+  if(e.key==='Escape') closeAdmin();
+});
+
+</script>
+
+<!-- ADMIN MODAL -->
+<div class="admin-ov" id="admin-ov" onclick="if(event.target===this)closeAdmin()">
+  <div class="admin-modal">
+    <div class="admin-hdr">
+      <div class="admin-title">⚙️ Administração</div>
+      <button class="m-close" onclick="closeAdmin()">✕</button>
+    </div>
+    <div class="admin-sections">
+
+      <!-- ESTATÍSTICAS -->
+      <div class="admin-section">
+        <div class="admin-section-title">📊 Estatísticas</div>
+        <div class="admin-row">
+          <div class="stat-card"><span class="stat-card-val" id="stat-total">—</span><span class="stat-card-lbl">Total de contatos</span></div>
+          <div class="stat-card"><span class="stat-card-val" id="stat-rmo">—</span><span class="stat-card-lbl">RMOs</span></div>
+        </div>
+        <div class="admin-row" style="grid-template-columns:1fr 1fr 1fr;">
+          <div class="stat-card hot"><span class="stat-card-val" id="stat-hot">—</span><span class="stat-card-lbl">🔥 Quentes</span></div>
+          <div class="stat-card warm"><span class="stat-card-val" id="stat-warm">—</span><span class="stat-card-lbl">🌡️ Mornos</span></div>
+          <div class="stat-card cold"><span class="stat-card-val" id="stat-cold">—</span><span class="stat-card-lbl">🧊 Frios</span></div>
+        </div>
+      </div>
+
+      <!-- SYNC -->
+      <div class="admin-section">
+        <div class="admin-section-title">🔄 Sincronização</div>
+        <div style="display:flex;gap:0.5rem;align-items:center;">
+          <button class="btn btn-o" onclick="adminSync()">🔄 Forçar sincronização</button>
+          <span class="sync-status" id="sync-status">—</span>
+        </div>
+      </div>
+
+      <!-- BACKUP -->
+      <div class="admin-section">
+        <div class="admin-section-title">💾 Backup</div>
+        <div style="display:flex;gap:0.5rem;">
+          <button class="btn btn-o" onclick="exportData()">⬇️ Exportar JSON</button>
+        </div>
+      </div>
+
+      <!-- URL DO SCRIPT -->
+      <div class="admin-section">
+        <div class="admin-section-title">🔗 URL do Google Apps Script</div>
+        <div class="admin-inp-row">
+          <div class="fg">
+            <input class="fi" id="admin-url" placeholder="https://script.google.com/macros/s/..." style="font-size:0.72rem;">
+          </div>
+          <button class="btn btn-y" onclick="saveScriptUrl()">Salvar</button>
+        </div>
+        <div class="admin-feedback" id="url-feedback"></div>
+      </div>
+
+      <!-- TROCAR SENHA PRINCIPAL -->
+      <div class="admin-section">
+        <div class="admin-section-title">🔐 Trocar senha principal</div>
+        <div class="admin-inp-row">
+          <div class="fg"><input class="fi" type="password" id="new-pass" placeholder="Nova senha"></div>
+          <div class="fg"><input class="fi" type="password" id="new-pass2" placeholder="Confirmar senha"></div>
+          <button class="btn btn-y" onclick="changeMainPass()">Salvar</button>
+        </div>
+        <div class="admin-feedback" id="pass-feedback"></div>
+      </div>
+
+      <!-- TROCAR SENHA ADMIN -->
+      <div class="admin-section">
+        <div class="admin-section-title">🛡️ Trocar senha admin</div>
+        <div class="admin-inp-row">
+          <div class="fg"><input class="fi" type="password" id="new-admin-pass" placeholder="Nova senha admin"></div>
+          <div class="fg"><input class="fi" type="password" id="new-admin-pass2" placeholder="Confirmar senha"></div>
+          <button class="btn btn-y" onclick="changeAdminPass()">Salvar</button>
+        </div>
+        <div class="admin-feedback" id="admin-pass-feedback"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN LOGIN -->
+<div class="login-ov" id="admin-login-ov" style="display:none;z-index:400;">
+  <div class="login-box">
+    <div class="login-logo">⚙️ <em>ACESSO ADMIN</em></div>
+    <p class="login-sub">Digite a senha de administrador</p>
+    <div class="login-field">
+      <input type="password" id="admin-login-inp" placeholder="Senha admin" onkeydown="if(event.key==='Enter')doAdminLogin()">
+    </div>
+    <button class="login-btn" onclick="doAdminLogin()">Entrar</button>
+    <div class="login-err" id="admin-login-err"></div>
+    <button onclick="closeAdminLogin()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.75rem;margin-top:-0.5rem;">Cancelar</button>
+  </div>
+</div>
+
+</body>
+</html>
